@@ -19,12 +19,12 @@ using namespace xbox::services::system;
 
 NAMESPACE_MICROSOFT_XBOX_SERVICES_STAT_MANAGER_CPP_BEGIN
 
-stats_manager&
+std::shared_ptr<stats_manager>
 stats_manager::get_singleton_instance()
 {
     static std::mutex s_singletonLock;
     std::lock_guard<std::mutex> guard(s_singletonLock);
-    static stats_manager instance;
+    static std::shared_ptr<stats_manager> instance = std::make_shared<stats_manager>();
     return instance;
 }
 

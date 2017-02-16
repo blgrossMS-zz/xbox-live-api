@@ -175,7 +175,7 @@ public:
     /// <summary> 
     /// Instantiates and returns an instance of stats manager
     /// </summary>
-    static stats_manager& get_singleton_instance();
+    static std::shared_ptr<stats_manager> get_singleton_instance();
 
     /// <summary> 
     /// Adds a local user to the stats manager

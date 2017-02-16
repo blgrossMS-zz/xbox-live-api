@@ -18,7 +18,8 @@ NAMESPACE_MICROSOFT_XBOX_SERVICES_STAT_MANAGER_CPP_BEGIN
 
 stats_value_document::stats_value_document() :
     m_isDirty(false),
-    m_revision(0)
+    m_revision(0),
+    m_state(svd_state::not_loaded)
 {
 }
 
@@ -79,7 +80,7 @@ stats_value_document::get_stat_names(
     }
 }
 
-uint32_t
+uint64_t
 stats_value_document::revision() const
 {
     return m_revision;
@@ -104,33 +105,36 @@ void stats_value_document::clear_dirty_state()
 void
 stats_value_document::do_work()
 {
-    for (auto& svdEvent : m_svdEventList)
+    if (m_state != svd_state::not_loaded)
     {
-        switch (svdEvent.event_type())
+        for (auto& svdEvent : m_svdEventList)
         {
-            case svd_event_type::stat_change:
+            switch (svdEvent.event_type())
             {
-                auto& pendingStat = svdEvent.stat_info();
-                auto statIter = m_statisticDocument.find(pendingStat.statPendingName);
-
-                if (statIter == m_statisticDocument.end())
+                case svd_event_type::stat_change:
                 {
-                    m_statisticDocument[pendingStat.statPendingName] = std::make_shared<stat_value>();  // this will need changed to be more like social manager
-                }
+                    auto& pendingStat = svdEvent.stat_info();
+                    auto statIter = m_statisticDocument.find(pendingStat.statPendingName);
 
-                switch (pendingStat.statDataType)
-                {
-                    case stat_data_type::number:
-                        m_statisticDocument[pendingStat.statPendingName]->set_stat(
-                            pendingStat.statPendingData.numberType
+                    if (statIter == m_statisticDocument.end())
+                    {
+                        m_statisticDocument[pendingStat.statPendingName] = std::make_shared<stat_value>();  // this will need changed to be more like social manager
+                    }
+
+                    switch (pendingStat.statDataType)
+                    {
+                        case stat_data_type::number:
+                            m_statisticDocument[pendingStat.statPendingName]->set_stat(
+                                pendingStat.statPendingData.numberType
                             );
-                        break;
+                            break;
 
-                    case stat_data_type::string:
-                        m_statisticDocument[pendingStat.statPendingName]->set_stat(pendingStat.statPendingData.stringType);
-                        break;
+                        case stat_data_type::string:
+                            m_statisticDocument[pendingStat.statPendingName]->set_stat(pendingStat.statPendingData.stringType);
+                            break;
+                    }
+                    break;
                 }
-                break;
             }
         }
     }
@@ -146,11 +150,66 @@ stats_value_document::set_flush_function(
     m_fRequestFlush = flushFunction;
 }
 
+
+void
+stats_value_document::set_state(
+    _In_ svd_state svdState
+    )
+{
+    m_state = svdState;
+}
+
+svd_state
+stats_value_document::state() const
+{
+    return m_state;
+}
+
+void
+stats_value_document::merge_stat_value_documents(
+    _In_ const stats_value_document& mergeSVD
+    )
+{
+    switch (m_state)
+    {
+        case svd_state::not_loaded:
+            m_revision = mergeSVD.m_revision;
+            m_statisticDocument = mergeSVD.m_statisticDocument;
+            break;
+
+        // for offline the stat values local override any service values
+        // only add any undefined stats into our list
+        case svd_state::offline_not_loaded:
+        case svd_state::offline_loaded:
+            for (auto& stat : mergeSVD.m_statisticDocument)
+            {
+                auto statIter = m_statisticDocument.find(stat.first);
+                if (statIter == m_statisticDocument.end())
+                {
+                    m_statisticDocument[stat.first] = stat.second;
+                }
+            }
+            break;
+
+        case svd_state::loaded:
+        default:
+            LOG_ERROR("Merge cannot happen with invalid or loaded document");
+            break;
+    }
+
+    m_state = svd_state::loaded;
+}
+
 web::json::value
-stats_value_document::serialize() const
+stats_value_document::serialize()
 {
     web::json::value requestJSON;
     requestJSON[_T("$schema")] = web::json::value::string(_T("http://stats.xboxlive.com/2017-1/schema#"));
+    if (m_state == svd_state::offline_not_loaded) // if offline svd with no revision, make revision number the current datetime. Revision number must always be last highest
+    {
+        m_revision = utility::datetime::utc_now().to_interval();
+    }
+
     requestJSON[_T("revision")] = web::json::value::number(m_revision);
 #if TV_API
     requestJSON[_T("timestamp")] = web::json::value(utils::datetime_to_string(utility::datetime::utc_now()));
@@ -179,6 +238,7 @@ stats_value_document::_Deserialize(
 
     std::error_code errc;
 
+    returnObject.m_state = svd_state::loaded;
     returnObject.m_revision = utils::extract_json_int(data, _T("revision"), errc, false);
     ++returnObject.m_revision; // increment the revision so first write is always new version
 

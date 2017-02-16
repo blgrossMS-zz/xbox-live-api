@@ -26,6 +26,14 @@ enum class svd_event_type
     stat_change
 };
 
+enum class svd_state
+{
+    not_loaded,
+    loaded,
+    offline_not_loaded,
+    offline_loaded,
+};
+
 struct stat_pending_state
 {
     stat_pending_state() :
@@ -87,15 +95,21 @@ public:
 
     void increment_revision();
 
-    web::json::value serialize() const;
+    web::json::value serialize();
 
-    uint32_t revision() const;
+    uint64_t revision() const;
 
     bool is_dirty() const;
 
     void clear_dirty_state();
 
     void do_work();
+
+    void set_state(_In_ svd_state svdState);
+
+    void merge_stat_value_documents(_In_ const stats_value_document& mergeSVD);
+
+    svd_state state() const;
 
     stats_value_document();
 
@@ -105,7 +119,8 @@ public:
 
 private:
     bool m_isDirty;
-    uint32_t m_revision;
+    svd_state m_state;
+    uint64_t m_revision;
     std::function<void()> m_fRequestFlush;
     xsapi_internal_string m_clientId;
     xsapi_internal_vector(svd_event) m_svdEventList;
@@ -213,8 +228,6 @@ public:
         _In_ const string_t& name
         );
 
-    void write_offline();
-
     void initialize();
 
 private:
@@ -226,19 +239,22 @@ private:
     }
 
     void write_offline(
-        _In_ const stats_user_context& userContext,
-        _In_ const web::json::value& serializedSVD
+        _In_ const stats_user_context& userContext
         );
 
     void flush_to_service(
         _In_ stats_user_context& statsUserContext
         );
 
-    void flush_to_service_callback(_In_ const string_t& userXuid);
+    void update_stats_value_document(_In_ stats_user_context& statsUserContext);
+
+    void request_flush_to_service_callback(_In_ const string_t& userXuid);
+
+    void run_flush_timer();
 
     static const std::chrono::seconds TIME_PER_CALL_SEC;
+    static const std::chrono::milliseconds STATS_POLL_TIME_MS;
 
-    bool m_isOffline;
     std::vector<stat_event> m_statEventList;
     std::unordered_map<string_t, stats_user_context> m_users;
     std::shared_ptr<xbox::services::call_buffer_timer> m_statTimer;
