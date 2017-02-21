@@ -27,7 +27,7 @@ std::chrono::seconds::zero();
 std::chrono::seconds(60);
 #endif
 
-const std::chrono::milliseconds stats_manager_impl::STATS_POLL_TIME_MS = std::chrono::minutes(5);
+const std::chrono::milliseconds stats_manager_impl::STATS_POLL_TIME_MS = std::chrono::milliseconds(16);
 
 stats_manager_impl::stats_manager_impl()
 {
@@ -76,9 +76,13 @@ stats_manager_impl::run_flush_timer()
         if (pThis != nullptr)
         {
             std::lock_guard<std::mutex> guard(pThis->m_statsServiceMutex);
-            for (auto user : pThis->m_users)
+            for (auto& user : pThis->m_users)
             {
-                pThis->flush_to_service(user.second);
+                if (user.second.statValueDocument.is_dirty())
+                {
+                    pThis->flush_to_service(user.second);
+                    user.second.statValueDocument.clear_dirty_state();
+                }
             }
             pThis->run_flush_timer();
         }

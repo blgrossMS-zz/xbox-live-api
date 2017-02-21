@@ -15,7 +15,6 @@ using namespace xbox::services;
 
 NAMESPACE_MICROSOFT_XBOX_SERVICES_STAT_MANAGER_CPP_BEGIN
 
-
 stats_value_document::stats_value_document() :
     m_isDirty(false),
     m_revision(0),
@@ -240,7 +239,6 @@ stats_value_document::_Deserialize(
 
     returnObject.m_state = svd_state::loaded;
     returnObject.m_revision = utils::extract_json_int(data, _T("revision"), errc, false);
-    ++returnObject.m_revision; // increment the revision so first write is always new version
 
     auto statsField = utils::extract_json_field(data, _T("stats"), errc, false);
     auto titleField = utils::extract_json_field(statsField, _T("title"), errc, false);
