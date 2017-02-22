@@ -13,7 +13,7 @@
 #include "xsapi/services.h"
 #include "xsapi/system.h"
 #include "xbox_live_context_impl.h"
-#include "system/ppltasks_extra.h"
+#include "ppltasks_extra.h"
 
 using namespace xbox::services;
 using namespace xbox::services::system;
@@ -468,12 +468,10 @@ stats_manager_impl::write_offline(
 #else
 void
 stats_manager_impl::write_offline(
-    _In_ const stats_user_context& userContext,
-    _In_ const web::json::value& serializedSVD
+    _In_ const stats_user_context& userContext
 )
 {
     UNREFERENCED_PARAMETER(userContext);
-    UNREFERENCED_PARAMETER(serializedSVD);
 }
 #endif
 

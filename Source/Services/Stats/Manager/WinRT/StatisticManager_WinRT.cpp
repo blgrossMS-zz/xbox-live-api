@@ -34,7 +34,7 @@ void StatisticManager::AddLocalUser(
     )
 {
     THROW_INVALIDARGUMENT_IF_NULL(user);
-    auto result = m_cppObj.add_local_user(
+    auto result = m_cppObj->add_local_user(
         user_context::user_convert(user)
         );
 
@@ -47,7 +47,7 @@ StatisticManager::RemoveLocalUser(
     )
 {
     THROW_INVALIDARGUMENT_IF_NULL(user);
-    auto result = m_cppObj.remove_local_user(
+    auto result = m_cppObj->remove_local_user(
         user_context::user_convert(user)
         );
 
@@ -60,7 +60,7 @@ StatisticManager::RequestFlushToService(
     )
 {
     THROW_INVALIDARGUMENT_IF_NULL(user);
-    auto result = m_cppObj.request_flush_to_service(
+    auto result = m_cppObj->request_flush_to_service(
         user_context::user_convert(user)
         );
 
@@ -74,7 +74,7 @@ StatisticManager::RequestFlushToService(
 )
 {
     THROW_INVALIDARGUMENT_IF_NULL(user);
-    auto result = m_cppObj.request_flush_to_service(
+    auto result = m_cppObj->request_flush_to_service(
         user_context::user_convert(user),
         isHighPriority
         );
@@ -85,7 +85,7 @@ StatisticManager::RequestFlushToService(
 Windows::Foundation::Collections::IVectorView<StatisticEvent^>^
 StatisticManager::DoWork()
 {
-    auto eventList = m_cppObj.do_work();
+    auto eventList = m_cppObj->do_work();
     return UtilsWinRT::CreatePlatformVectorFromStdVectorObj<StatisticEvent>(eventList)->GetView();
 }
 
@@ -99,7 +99,7 @@ StatisticManager::SetStatisticNumberData(
     THROW_INVALIDARGUMENT_IF_NULL(user);
     THROW_INVALIDARGUMENT_IF_NULL(name);
 
-    auto result = m_cppObj.set_stat_as_number(
+    auto result = m_cppObj->set_stat_as_number(
         user_context::user_convert(user),
         STRING_T_FROM_PLATFORM_STRING(name),
         value
@@ -118,7 +118,7 @@ StatisticManager::SetStatisticIntegerData(
     THROW_INVALIDARGUMENT_IF_NULL(user);
     THROW_INVALIDARGUMENT_IF_NULL(name);
 
-    auto result = m_cppObj.set_stat_as_integer(
+    auto result = m_cppObj->set_stat_as_integer(
         user_context::user_convert(user),
         STRING_T_FROM_PLATFORM_STRING(name),
         value
@@ -139,7 +139,7 @@ StatisticManager::SetStatisticStringData(
     THROW_CPP_INVALIDARGUMENT_IF_NULL(value);
 
     auto valueStr = STRING_T_FROM_PLATFORM_STRING(value);
-    auto result = m_cppObj.set_stat_as_string(
+    auto result = m_cppObj->set_stat_as_string(
         user_context::user_convert(user),
         STRING_T_FROM_PLATFORM_STRING(name),
         valueStr.c_str()
@@ -155,7 +155,7 @@ StatisticManager::GetStatisticNames(
 {
     THROW_INVALIDARGUMENT_IF_NULL(user);
     std::vector<string_t> statNamesVec;
-    auto result = m_cppObj.get_stat_names(
+    auto result = m_cppObj->get_stat_names(
         user_context::user_convert(user),
         statNamesVec
         );
@@ -174,7 +174,7 @@ StatisticManager::GetStatistic(
     THROW_INVALIDARGUMENT_IF_NULL(user);
     THROW_INVALIDARGUMENT_IF_NULL(name);
 
-    auto result = m_cppObj.get_stat(
+    auto result = m_cppObj->get_stat(
         user_context::user_convert(user),
         STRING_T_FROM_PLATFORM_STRING(name)
         );

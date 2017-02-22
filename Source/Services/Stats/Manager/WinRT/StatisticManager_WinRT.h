@@ -126,7 +126,7 @@ internal:
     StatisticManager();
 
 private:
-    xbox::services::stats::manager::stats_manager m_cppObj;
+   std::shared_ptr<xbox::services::stats::manager::stats_manager> m_cppObj;
 };
 
 NAMESPACE_MICROSOFT_XBOX_SERVICES_STATISTIC_MANAGER_END
