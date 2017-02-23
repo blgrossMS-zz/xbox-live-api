@@ -27,7 +27,7 @@ std::chrono::seconds::zero();
 std::chrono::seconds(60);
 #endif
 
-const std::chrono::milliseconds stats_manager_impl::STATS_POLL_TIME_MS = std::chrono::milliseconds(16);
+const std::chrono::milliseconds stats_manager_impl::STATS_POLL_TIME_MS = std::chrono::minutes(5);
 
 stats_manager_impl::stats_manager_impl()
 {
@@ -244,11 +244,9 @@ stats_manager_impl::request_flush_to_service(
     }
 
     auto& userSVD = userIter->second.statValueDocument;
-    if (userSVD.is_dirty())
-    {
-        userSVD.do_work();
-        userSVD.clear_dirty_state();
-    }
+
+    userSVD.do_work();
+    userSVD.clear_dirty_state();
 
     std::vector<string_t> userVec;
     userVec.push_back(userStr);
@@ -302,6 +300,12 @@ stats_manager_impl::update_stats_value_document(_In_ stats_user_context& statsUs
 {
     std::weak_ptr<stats_manager_impl> thisWeak = shared_from_this();
     xbox_live_user_t user = statsUserContext.xboxLiveUser;
+    if (user == nullptr)
+    {
+        LOG_WARN("User disappeared");
+        return;
+    }
+
     auto userStr = user_context::get_user_id(user);
 
     statsUserContext.simplifiedStatsService.update_stats_value_document(statsUserContext.statValueDocument)
@@ -405,7 +409,7 @@ stats_manager_impl::set_stat(
     return userIter->second.statValueDocument.set_stat(name.c_str(), value);
 }
 
-xbox_live_result<std::shared_ptr<stat_value>>
+xbox_live_result<stat_value>
 stats_manager_impl::get_stat(
     _In_ const xbox_live_user_t& user,
     _In_ const string_t& name
@@ -416,7 +420,7 @@ stats_manager_impl::get_stat(
     auto userIter = m_users.find(userStr);
     if (userIter == m_users.end())
     {
-        return xbox_live_result<std::shared_ptr<stat_value>>(xbox_live_error_code::invalid_argument, "User not found in local map");
+        return xbox_live_result<stat_value>(xbox_live_error_code::invalid_argument, "User not found in local map");
     }
 
     return userIter->second.statValueDocument.get_stat(name.c_str());

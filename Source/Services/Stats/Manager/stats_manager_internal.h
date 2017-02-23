@@ -70,18 +70,13 @@ public:
         _In_ const std::function<void()> flushFunction
         );
 
-    xbox_live_result<std::shared_ptr<stat_value>> get_stat(
+    xbox_live_result<stat_value> get_stat(
         _In_ const char_t* name
         ) const;
 
     xbox_live_result<void> set_stat(
         _In_ const char_t* statName,
         _In_ double statValue
-        );
-
-    xbox_live_result<void> set_stat(
-        _In_ const char_t* statName,
-        _In_ int64_t statValue
         );
 
     xbox_live_result<void> set_stat(
@@ -124,7 +119,7 @@ private:
     std::function<void()> m_fRequestFlush;
     xsapi_internal_string m_clientId;
     xsapi_internal_vector(svd_event) m_svdEventList;
-    xsapi_internal_unordered_map(string_t, std::shared_ptr<stat_value>) m_statisticDocument;
+    xsapi_internal_unordered_map(string_t, stat_value) m_statisticDocument;
 };
 
 /// internal class
@@ -203,12 +198,6 @@ public:
     xbox_live_result<void> set_stat(
         _In_ const xbox_live_user_t& user,
         _In_ const string_t& name,
-        _In_ int64_t value
-        );
-
-    xbox_live_result<void> set_stat(
-        _In_ const xbox_live_user_t& user,
-        _In_ const string_t& name,
         _In_ double value
         );
 
@@ -223,7 +212,7 @@ public:
         _Inout_ std::vector<string_t>& statNameList
         );
 
-    xbox_live_result<std::shared_ptr<stat_value>> get_stat(
+    xbox_live_result<stat_value> get_stat(
         _In_ const xbox_live_user_t& user,
         _In_ const string_t& name
         );

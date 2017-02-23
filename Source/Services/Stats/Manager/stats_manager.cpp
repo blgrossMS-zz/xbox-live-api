@@ -110,7 +110,7 @@ stats_manager::set_stat_as_string(
         );
 }
 
-xbox_live_result<std::shared_ptr<stat_value>>
+xbox_live_result<stat_value>
 stats_manager::get_stat(
     _In_ const xbox_live_user_t& user,
     _In_ const string_t& name

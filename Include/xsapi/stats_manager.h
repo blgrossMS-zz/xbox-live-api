@@ -274,7 +274,7 @@ public:
     /// <param name="user">The local user whose stats to access</param>
     /// <param name="name">The name of the statistic to modify</param>
     /// <return>Whether or not the setting was successful along with updated stat</return>
-    xbox_live_result<std::shared_ptr<stat_value>> get_stat(
+    xbox_live_result<stat_value> get_stat(
         _In_ const xbox_live_user_t& user,
         _In_ const string_t& name
         );
