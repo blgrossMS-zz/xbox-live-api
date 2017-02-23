@@ -11,7 +11,7 @@
 #if UNIT_TEST_SERVICES
 #define PERF_TESTING 0
 #else
-#define PERF_TESTING 0
+#define PERF_TESTING 1
 #endif
 
 #define PERF_THRESHOLD_MS .5f

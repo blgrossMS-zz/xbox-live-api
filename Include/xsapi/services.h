@@ -27,6 +27,7 @@
 #include "xsapi/privacy.h"
 #include "xsapi/profile.h"
 #include "xsapi/social_manager.h"
+#include "xsapi/stats_manager.h"
 
 #if !defined(XBOX_LIVE_CREATORS_SDK)
 #include "xsapi/social.h"
@@ -41,7 +42,6 @@
 #include "xsapi/marketplace.h"
 #include "xsapi/title_callable_ui.h"
 #include "xsapi/multiplayer_manager.h"
-#include "xsapi/stats_manager.h"
 #include "xsapi/entertainment_profile.h"
 #endif // !defined(XBOX_LIVE_CREATORS_SDK)
 #endif // !BEAM_API
