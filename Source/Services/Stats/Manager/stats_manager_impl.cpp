@@ -29,7 +29,7 @@ std::chrono::seconds(60);
 
 const std::chrono::milliseconds stats_manager_impl::STATS_POLL_TIME_MS = std::chrono::minutes(5);
 
-stats_manager_impl::stats_manager_impl() : m_perfTester(L"stats_manager_impl")
+stats_manager_impl::stats_manager_impl()
 {
 }
 
@@ -473,7 +473,7 @@ stats_manager_impl::delete_stat(
         return xbox_live_result<void>(xbox_live_error_code::invalid_argument, "User not found in local map");
     }
 
-    userIter->second.statValueDocument.delete_stat(name);
+    return userIter->second.statValueDocument.delete_stat(name.c_str());
 }
 
 #if TV_API

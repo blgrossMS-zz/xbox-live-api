@@ -183,4 +183,21 @@ StatisticManager::GetStatistic(
     return ref new StatisticValue(result.payload());
 }
 
+void
+StatisticManager::DeleteStatistic(
+    _In_ XboxLiveUser_t user,
+    _In_ Platform::String^ name
+    )
+{
+    THROW_INVALIDARGUMENT_IF_NULL(user);
+    THROW_INVALIDARGUMENT_IF_NULL(name);
+
+    auto result = m_cppObj->delete_stat(
+        user_context::user_convert(user),
+        STRING_T_FROM_PLATFORM_STRING(name)
+        );
+
+    THROW_IF_ERR(result);
+}
+
 NAMESPACE_MICROSOFT_XBOX_SERVICES_STATISTIC_MANAGER_END

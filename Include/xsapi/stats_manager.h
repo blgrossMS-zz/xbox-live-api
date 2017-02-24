@@ -139,7 +139,7 @@ public:
     /// Represents error code and error message
     /// </summary>
     /// <return>The returned xbox live result</return>
-    const xbox_live_result<void>& error_info() const;
+    xbox_live_result<void>& error_info();
 
     /// <summary> 
     /// The type of event the statistic is

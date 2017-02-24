@@ -17,7 +17,6 @@
 #include <iostream>
 #include "xsapi/mem.h"
 #include "call_buffer_timer.h"
-#include "Shared/perf_tester.h"
 
 namespace xbox { namespace services { namespace stats { namespace manager { 
 
@@ -261,7 +260,6 @@ private:
     std::shared_ptr<xbox::services::call_buffer_timer> m_statPriorityTimer;
     // TODO: change back to xsapi_internal_string
     std::mutex m_statsServiceMutex;
-    perf_tester m_perfTester;
 };
 
 }}}}

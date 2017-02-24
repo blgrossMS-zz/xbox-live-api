@@ -119,9 +119,9 @@ stats_value_document::do_work()
     {
         for (auto& svdEvent : m_svdEventList)
         {
+            auto& pendingStat = svdEvent.stat_info();
             switch (svdEvent.event_type())
             {
-                auto& pendingStat = svdEvent.stat_info();
                 case svd_event_type::stat_change:
                 {
                     auto statIter = m_statisticDocument.find(pendingStat.statPendingName);

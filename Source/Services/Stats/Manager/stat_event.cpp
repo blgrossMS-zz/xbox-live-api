@@ -23,8 +23,8 @@ stat_event::stat_event(
 {
 }
 
-const xbox_live_result<void>&
-stat_event::error_info() const
+xbox_live_result<void>&
+stat_event::error_info()
 {
     return m_errorInfo;
 }
