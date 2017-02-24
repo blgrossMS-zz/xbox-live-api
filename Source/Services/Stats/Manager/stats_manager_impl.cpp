@@ -459,6 +459,23 @@ stats_manager_impl::get_stat_names(
     return xbox_live_result<void>();
 }
 
+xbox_live_result<void>
+stats_manager_impl::delete_stat(
+    _In_ const xbox_live_user_t& user,
+    _In_ const string_t& name
+    )
+{
+    std::lock_guard<std::mutex> guard(m_statsServiceMutex);
+    string_t userStr = user_context::get_user_id(user);
+    auto userIter = m_users.find(userStr);
+    if (userIter == m_users.end())
+    {
+        return xbox_live_result<void>(xbox_live_error_code::invalid_argument, "User not found in local map");
+    }
+
+    userIter->second.statValueDocument.delete_stat(name);
+}
+
 #if TV_API
 void
 stats_manager_impl::write_offline(

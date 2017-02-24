@@ -24,7 +24,8 @@ namespace xbox { namespace services { namespace stats { namespace manager {
 enum class svd_event_type
 {
     unknown,
-    stat_change
+    stat_change,
+    stat_delete
 };
 
 enum class svd_state
@@ -52,7 +53,7 @@ struct stat_pending_state
 class svd_event
 {
 public:
-    svd_event(_In_ stat_pending_state statPendingState);
+    svd_event(_In_ stat_pending_state statPendingState, _In_ svd_event_type eventType = svd_event_type::stat_change);
 
     svd_event_type event_type() const;
     const stat_pending_state& stat_info() const;
@@ -88,6 +89,10 @@ public:
     void get_stat_names(
         _Inout_ std::vector<string_t>& statNameList
         ) const;
+
+    xbox_live_result<void> delete_stat(
+        _In_ const char_t* name
+        );
 
     void increment_revision();
 
@@ -214,6 +219,11 @@ public:
         );
 
     xbox_live_result<stat_value> get_stat(
+        _In_ const xbox_live_user_t& user,
+        _In_ const string_t& name
+        );
+
+    xbox_live_result<void> delete_stat(
         _In_ const xbox_live_user_t& user,
         _In_ const string_t& name
         );

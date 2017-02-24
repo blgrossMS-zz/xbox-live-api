@@ -79,6 +79,17 @@ stats_value_document::get_stat_names(
     }
 }
 
+xbox_live_result<void>
+stats_value_document::delete_stat(
+    _In_ const char_t* statName
+    )
+{
+    stat_pending_state statPendingState;
+    utils::char_t_copy(statPendingState.statPendingName, ARRAYSIZE(statPendingState.statPendingName), statName);
+    m_svdEventList.push_back(svd_event(statPendingState, svd_event_type::stat_delete));
+    return xbox_live_result<void>();
+}
+
 uint64_t
 stats_value_document::revision() const
 {
@@ -110,9 +121,9 @@ stats_value_document::do_work()
         {
             switch (svdEvent.event_type())
             {
+                auto& pendingStat = svdEvent.stat_info();
                 case svd_event_type::stat_change:
                 {
-                    auto& pendingStat = svdEvent.stat_info();
                     auto statIter = m_statisticDocument.find(pendingStat.statPendingName);
 
                     switch (pendingStat.statDataType)
@@ -131,6 +142,9 @@ stats_value_document::do_work()
                     m_isDirty = true;
                     break;
                 }
+                case svd_event_type::stat_delete:
+                    m_statisticDocument.erase(pendingStat.statPendingName);
+                    break;
             }
         }
     }
@@ -250,10 +264,11 @@ stats_value_document::_Deserialize(
 }
 
 svd_event::svd_event(
-    _In_ stat_pending_state statPendingState
+    _In_ stat_pending_state statPendingState,
+    _In_ svd_event_type eventType
     ) :
     m_statPendingState(std::move(statPendingState)),
-    m_svdEventType(svd_event_type::stat_change)
+    m_svdEventType(eventType)
 {
 }
 

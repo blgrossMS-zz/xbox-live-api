@@ -134,4 +134,16 @@ stats_manager::get_stat_names(
         );
 }
 
+xbox_live_result<void>
+stats_manager::delete_stat(
+    _In_ const xbox_live_user_t& user,
+    _In_ const string_t& name
+    )
+{
+    return m_statsManagerImpl->delete_stat(
+        user,
+        name
+        );
+}
+
 NAMESPACE_MICROSOFT_XBOX_SERVICES_STAT_MANAGER_CPP_END

@@ -279,6 +279,17 @@ public:
         _In_ const string_t& name
         );
 
+    /// <summary> 
+    /// Deletes a stat. Will clear stat from service and social leaderboard information
+    /// </summary>
+    /// <param name="user">The local user whose stats to access</param>
+    /// <param name="name">The name of the statistic to delete</param>
+    /// <return>Whether or not the stat deletion was successful</return>
+    xbox_live_result<void> delete_stat(
+        _In_ const xbox_live_user_t& user,
+        _In_ const string_t& name
+        );
+
     stats_manager();
 
 private:
