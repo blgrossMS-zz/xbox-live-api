@@ -20,6 +20,8 @@ stats_value_document::stats_value_document() :
     m_revision(0),
     m_state(svd_state::not_loaded)
 {
+    m_svdEventList.reserve(100);
+    m_statisticDocument.reserve(20);
 }
 
 xbox_live_result<stat_value>

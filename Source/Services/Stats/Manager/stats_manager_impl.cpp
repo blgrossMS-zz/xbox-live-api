@@ -81,7 +81,6 @@ stats_manager_impl::run_flush_timer()
                 if (user.second.statValueDocument.is_dirty())
                 {
                     pThis->flush_to_service(user.second);
-                    user.second.statValueDocument.clear_dirty_state();
                 }
             }
             pThis->run_flush_timer();
@@ -94,7 +93,6 @@ stats_manager_impl::add_local_user(
     _In_ const xbox_live_user_t& user
     )
 {
-    m_perfTester.start_timer(L"add_local_user");
     std::lock_guard<std::mutex> guard(m_statsServiceMutex);
     string_t userStr = user_context::get_user_id(user);
     auto userIter = m_users.find(userStr);
@@ -123,7 +121,6 @@ stats_manager_impl::add_local_user(
             return;
         }
 
-        pThis->m_perfTester.start_timer(L"Signed In Lambda");
         std::lock_guard<std::mutex> guard(pThis->m_statsServiceMutex);
         bool isSignedIn = false;
 #if TV_API
@@ -144,11 +141,11 @@ stats_manager_impl::add_local_user(
                 }
                 else
                 {
-                    pThis->m_users[userStr].statValueDocument.merge_stat_value_documents(svd);
+                    userStatContext->second.statValueDocument.merge_stat_value_documents(svd);
                 }
             }
 
-            pThis->m_users[userStr].statValueDocument.set_flush_function([thisWeak, userStr, user]()
+            userStatContext->second.statValueDocument.set_flush_function([thisWeak, userStr, user]()
             {
                 std::shared_ptr<stats_manager_impl> pThis(thisWeak.lock());
                 if (pThis == nullptr)
@@ -156,20 +153,16 @@ stats_manager_impl::add_local_user(
                     return;
                 }
 
-                pThis->m_perfTester.start_timer(L"set_flush_function lambda");
                 std::lock_guard<std::mutex> guard(pThis->m_statsServiceMutex);
                 auto statContextIter = pThis->m_users.find(userStr);
                 if (statContextIter == pThis->m_users.end())
                 {
-                    pThis->m_perfTester.stop_timer(L"set_flush_function lambda");
                     return;
                 }
 
                 pThis->flush_to_service(
                     statContextIter->second
                     );
-
-                pThis->m_perfTester.stop_timer(L"set_flush_function lambda");
             });
         }
         else    // not offline signed in
@@ -178,9 +171,7 @@ stats_manager_impl::add_local_user(
         }
 
         pThis->m_statEventList.push_back(stat_event(stat_event_type::local_user_added, user, xbox_live_result<void>(statsValueDocResult.err(), statsValueDocResult.err_message())));
-        pThis->m_perfTester.stop_timer(L"Signed In Lambda");
     });
-    m_perfTester.stop_timer(L"add_local_user");
     return xbox_live_result<void>();
 }
 
@@ -189,7 +180,6 @@ stats_manager_impl::remove_local_user(
     _In_ const xbox_live_user_t& user
 )
 {
-    m_perfTester.start_timer(L"remove_local_user");
     std::lock_guard<std::mutex> guard(m_statsServiceMutex);
     string_t userStr = user_context::get_user_id(user);
     auto userIter = m_users.find(userStr);
@@ -200,9 +190,9 @@ stats_manager_impl::remove_local_user(
 
     auto statsUserContext = userIter->second;
     auto userSVD = statsUserContext.statValueDocument;
+    userSVD.do_work();  // before removing the user apply all users
     if (userSVD.is_dirty())
     {
-        userSVD.do_work();  // before removing the user apply all users
         std::weak_ptr<stats_manager_impl> thisWeak = shared_from_this();
         userIter->second.simplifiedStatsService.update_stats_value_document(userSVD)
         .then([thisWeak, userSVD, user, userStr](xbox_live_result<void> updateSVDResult)
@@ -213,7 +203,6 @@ stats_manager_impl::remove_local_user(
                 return;
             }
 
-            pThis->m_perfTester.start_timer(L"Signed Out Lambda");
             std::lock_guard<std::mutex> guard(pThis->m_statsServiceMutex);
             auto statsUserContextIter = pThis->m_users.find(userStr);
             if (statsUserContextIter == pThis->m_users.end())
@@ -228,7 +217,6 @@ stats_manager_impl::remove_local_user(
 
             pThis->m_statEventList.push_back(stat_event(stat_event_type::local_user_removed, user, updateSVDResult));
             pThis->m_users.erase(userStr);
-            pThis->m_perfTester.stop_timer(L"Signed Out Lambda");
         });
     }
     else
@@ -236,8 +224,6 @@ stats_manager_impl::remove_local_user(
         m_statEventList.push_back(stat_event(stat_event_type::local_user_removed, user, xbox_live_result<void>()));
         m_users.erase(userIter);
     }
-
-    m_perfTester.stop_timer(L"remove_local_user");
 
     return xbox_live_result<void>();
 }
@@ -248,7 +234,6 @@ stats_manager_impl::request_flush_to_service(
     _In_ bool isHighPriority
     )
 {
-    m_perfTester.start_timer(L"request_flush_to_service");
     std::lock_guard<std::mutex> guard(m_statsServiceMutex);
     string_t userStr = user_context::get_user_id(user);
     auto userIter = m_users.find(userStr);
@@ -258,9 +243,6 @@ stats_manager_impl::request_flush_to_service(
     }
 
     auto& userSVD = userIter->second.statValueDocument;
-
-    userSVD.do_work();
-    userSVD.clear_dirty_state();
 
     std::vector<string_t> userVec;
     userVec.push_back(userStr);
@@ -274,7 +256,6 @@ stats_manager_impl::request_flush_to_service(
         m_statTimer->fire(userVec);
     }
 
-    m_perfTester.stop_timer(L"request_flush_to_service");
     return xbox_live_result<void>();
 }
 
@@ -284,8 +265,14 @@ stats_manager_impl::flush_to_service(
 )
 {
     std::weak_ptr<stats_manager_impl> thisWeak = shared_from_this();
+    if (statsUserContext.xboxLiveUser == nullptr)
+    {
+        LOG_DEBUG("flush_to_service: user is null");
+        return;
+    }
     auto userStr = user_context::get_user_id(statsUserContext.xboxLiveUser);
     auto& svd = statsUserContext.statValueDocument;
+    svd.clear_dirty_state();
     if (svd.state() != svd_state::loaded)   // if not loaded, try and get the SVD from the service
     {
         statsUserContext.simplifiedStatsService.get_stats_value_document().then([thisWeak, userStr](xbox_live_result<stats_value_document> svdResult)
@@ -296,16 +283,20 @@ stats_manager_impl::flush_to_service(
                 return;
             }
 
-            pThis->m_perfTester.start_timer(L"flush_to_service lambda");
             std::lock_guard<std::mutex> guard(pThis->m_statsServiceMutex);
+
+            auto userIter = pThis->m_users.find(userStr);
+            if (userIter == pThis->m_users.end())
+            {
+                LOG_DEBUG("User not found in flush_to_service lambda");
+                return;
+            }
 
             if (!svdResult.err())
             {
-                pThis->m_users[userStr].statValueDocument.merge_stat_value_documents(svdResult.payload());
+                userIter->second.statValueDocument.merge_stat_value_documents(svdResult.payload());
+                pThis->update_stats_value_document(userIter->second);
             }
-
-            pThis->update_stats_value_document(pThis->m_users[userStr]);
-            pThis->m_perfTester.stop_timer(L"flush_to_service lambda");
         });
     }
     else
@@ -336,7 +327,6 @@ stats_manager_impl::update_stats_value_document(_In_ stats_user_context& statsUs
             return;
         }
 
-        pThis->m_perfTester.start_timer(L"update_stats_value_document lambda");
         std::lock_guard<std::mutex> guard(pThis->m_statsServiceMutex);
         auto statsUserContextIter = pThis->m_users.find(userStr);
         if (statsUserContextIter == pThis->m_users.end())
@@ -363,7 +353,6 @@ stats_manager_impl::update_stats_value_document(_In_ stats_user_context& statsUs
         }
 
         pThis->m_statEventList.push_back(stat_event(stat_event_type::stat_update_complete, user, updateSVDResult));
-        pThis->m_perfTester.stop_timer(L"update_stats_value_document lambda");
     });
 }
 
@@ -372,23 +361,20 @@ stats_manager_impl::request_flush_to_service_callback(
     _In_ const string_t& userXuid
     )
 {
-    m_perfTester.start_timer(L"request_flush_to_service_callback");
     std::lock_guard<std::mutex> guard(m_statsServiceMutex);
     auto userIter = m_users.find(userXuid);
     if (userIter != m_users.end())
     {
+        userIter->second.statValueDocument.do_work();
         flush_to_service(
             userIter->second
             );
     }
-
-    m_perfTester.stop_timer(L"request_flush_to_service_callback");
 }
 
 std::vector<stat_event>
 stats_manager_impl::do_work()
 {
-    m_perfTester.start_timer(L"do_work");
     std::lock_guard<std::mutex> guard(m_statsServiceMutex);
     auto copyList = m_statEventList;
     for (auto& statUserContext : m_users)
@@ -397,7 +383,6 @@ stats_manager_impl::do_work()
     }
     m_statEventList.clear();
 
-    m_perfTester.stop_timer(L"do_work");
     return copyList;
 }
 
@@ -408,7 +393,6 @@ stats_manager_impl::set_stat(
     _In_ double value
     )
 {
-    m_perfTester.start_timer(L"set_stat double");
     std::lock_guard<std::mutex> guard(m_statsServiceMutex);
     string_t userStr = user_context::get_user_id(user);
     auto userIter = m_users.find(userStr);
@@ -416,9 +400,8 @@ stats_manager_impl::set_stat(
     {
         return xbox_live_result<void>(xbox_live_error_code::invalid_argument, "User not found in local map");
     }
-
-    m_perfTester.stop_timer(L"set_stat double");
-    return userIter->second.statValueDocument.set_stat(name.c_str(), value);
+    auto result = userIter->second.statValueDocument.set_stat(name.c_str(), value);
+    return result;
 }
 
 xbox_live_result<void>
@@ -428,7 +411,6 @@ stats_manager_impl::set_stat(
     _In_ const char_t* value
 )
 {
-    m_perfTester.start_timer(L"set_stat str");
     std::lock_guard<std::mutex> guard(m_statsServiceMutex);
     string_t userStr = user_context::get_user_id(user);
     auto userIter = m_users.find(userStr);
@@ -437,8 +419,8 @@ stats_manager_impl::set_stat(
         return xbox_live_result<void>(xbox_live_error_code::invalid_argument, "User not found in local map");
     }
 
-    m_perfTester.stop_timer(L"set_stat str");
-    return userIter->second.statValueDocument.set_stat(name.c_str(), value);
+    auto result = userIter->second.statValueDocument.set_stat(name.c_str(), value);
+    return result;
 }
 
 xbox_live_result<stat_value>
@@ -447,9 +429,7 @@ stats_manager_impl::get_stat(
     _In_ const string_t& name
     )
 {
-    m_perfTester.start_timer(L"get_stat");
     std::lock_guard<std::mutex> guard(m_statsServiceMutex);
-
     string_t userStr = user_context::get_user_id(user);
     auto userIter = m_users.find(userStr);
     if (userIter == m_users.end())
@@ -457,7 +437,6 @@ stats_manager_impl::get_stat(
         return xbox_live_result<stat_value>(xbox_live_error_code::invalid_argument, "User not found in local map");
     }
 
-    m_perfTester.stop_timer(L"get_stat");
     return userIter->second.statValueDocument.get_stat(name.c_str());
 }
 
@@ -467,7 +446,6 @@ stats_manager_impl::get_stat_names(
     _Inout_ std::vector<string_t>& statNameList
     )
 {
-    m_perfTester.start_timer(L"get_stat_names");
     std::lock_guard<std::mutex> guard(m_statsServiceMutex);
     string_t userStr = user_context::get_user_id(user);
     auto userIter = m_users.find(userStr);
@@ -478,7 +456,6 @@ stats_manager_impl::get_stat_names(
 
     userIter->second.statValueDocument.get_stat_names(statNameList);
 
-    m_perfTester.stop_timer(L"get_stat_names");
     return xbox_live_result<void>();
 }
 

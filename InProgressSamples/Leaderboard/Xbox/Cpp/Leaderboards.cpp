@@ -75,15 +75,30 @@ void Sample::Initialize(IUnknown* window)
 void Sample::WriteEvent()
 {
     auto user = m_liveResources->GetUser();
+    performance_counters::get_singleton_instance()->clear_captured_data();
 
-    performance_counters::get_singleton_instance()->begin_capture(L"add_local_user");
-    xbox::services::stats::manager::stats_manager::get_singleton_instance()->add_local_user(user);
-    performance_counters::get_singleton_instance()->end_capture(L"add_local_user");
-
-    int64_t intStat = 0;
 
     for (int i = 0; i < 1000; ++i)
     {
+        performance_counters::get_singleton_instance()->begin_capture(L"add_local_user");
+        xbox::services::stats::manager::stats_manager::get_singleton_instance()->add_local_user(user);
+        performance_counters::get_singleton_instance()->end_capture(L"add_local_user");
+
+        int64_t intStat = 0;
+        bool isDone = false;
+        while (!isDone)
+        {
+            auto evts = m_statsManager->do_work();
+            for (auto evt : evts)
+            {
+                switch (evt.event_type())
+                {
+                case stat_event_type::local_user_added:
+                    isDone = true;
+                    break;
+                }
+            }
+        }
         performance_counters::get_singleton_instance()->begin_capture(L"get_stat");
         auto numHeadshotsStat = m_statsManager->get_stat(user, L"numHeadshots");
         performance_counters::get_singleton_instance()->end_capture(L"get_stat");
@@ -99,15 +114,34 @@ void Sample::WriteEvent()
             performance_counters::get_singleton_instance()->end_capture(L"set_stat_as_integer");
         }
 
+        performance_counters::get_singleton_instance()->begin_capture(L"do_work");
+        m_statsManager->do_work();
+        performance_counters::get_singleton_instance()->end_capture(L"do_work");
+
+
         performance_counters::get_singleton_instance()->begin_capture(L"request_flush_to_service");
         m_statsManager->request_flush_to_service(user);
         performance_counters::get_singleton_instance()->end_capture(L"request_flush_to_service");
+
+        performance_counters::get_singleton_instance()->begin_capture(L"remove_local_user");
+        xbox::services::stats::manager::stats_manager::get_singleton_instance()->remove_local_user(user);
+        performance_counters::get_singleton_instance()->end_capture(L"remove_local_user");
+
+        isDone = false;
+        while (!isDone)
+        {
+            auto evts = m_statsManager->do_work();
+            for (auto evt : evts)
+            {
+                switch (evt.event_type())
+                {
+                case stat_event_type::local_user_removed:
+                    isDone = true;
+                    break;
+                }
+            }
+        }
     }
-
-    performance_counters::get_singleton_instance()->begin_capture(L"remove_local_user");
-    xbox::services::stats::manager::stats_manager::get_singleton_instance()->remove_local_user(user);
-    performance_counters::get_singleton_instance()->end_capture(L"remove_local_user");
-
     stringstream_t str;
     str << L"average ";
     str << performance_counters::get_singleton_instance()->get_capture_instace(L"add_local_user")->average_time() << "/";
@@ -115,6 +149,7 @@ void Sample::WriteEvent()
     str << performance_counters::get_singleton_instance()->get_capture_instace(L"set_stat_as_integer")->average_time() << "/";
     str << performance_counters::get_singleton_instance()->get_capture_instace(L"request_flush_to_service")->average_time() << "/";
     str << performance_counters::get_singleton_instance()->get_capture_instace(L"remove_local_user")->average_time() << "/";
+    str << performance_counters::get_singleton_instance()->get_capture_instace(L"do_work")->average_time() << "/";
     str << std::endl;
 
     str << L"max ";
@@ -123,6 +158,7 @@ void Sample::WriteEvent()
     str << performance_counters::get_singleton_instance()->get_capture_instace(L"set_stat_as_integer")->max_time() << "/";
     str << performance_counters::get_singleton_instance()->get_capture_instace(L"request_flush_to_service")->max_time() << "/";
     str << performance_counters::get_singleton_instance()->get_capture_instace(L"remove_local_user")->max_time() << "/";
+    str << performance_counters::get_singleton_instance()->get_capture_instace(L"do_work")->max_time() << "/";
     str << std::endl;
 
     auto strStr = str.str();
