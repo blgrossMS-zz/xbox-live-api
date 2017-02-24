@@ -89,7 +89,7 @@ public:
         {
             auto& statValueResult = statValueDocument.get_stat(statName.c_str());
             VERIFY_IS_TRUE(!statValueResult.err());
-            VerifyStatAreEqual(statName, *statValueResult.payload(), titleStatsList);
+            VerifyStatAreEqual(statName, statValueResult.payload(), titleStatsList);
         }
 
         VERIFY_ARE_EQUAL_STR(L"GET", httpCall->HttpMethod);
